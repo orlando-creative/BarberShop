@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barbería Estilo & Corte - Bolivia</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>ESTILO & CORTE <span style="font-size:0.6em; color:var(--accent-color)">BO</span></h1>
+            <div id="auth-container">
+                <button id="login-btn" class="btn-outline">Iniciar Sesión</button>
+                <div id="user-info" class="hidden">
+                    <span id="user-name"></span>
+                    <button id="logout-btn" class="btn-outline">Salir</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section (Siempre visible) -->
+    <section class="hero">
+        <div class="container">
+            <h2>Excelencia en Cada Corte</h2>
+            <p>La experiencia definitiva de barbería clásica combinada con técnicas modernas en el corazón de Bolivia.</p>
+        </div>
+    </section>
+
+    <main class="container">
+        <!-- Servicios Preview (Siempre visible) -->
+        <section id="services-info" class="section">
+            <h2 class="section-title">Nuestros Servicios</h2>
+            <div class="services-grid">
+                <div class="service-item card">
+                    <h3>Corte Clásico</h3>
+                    <p>Tijera y máquina con acabado tradicional.</p>
+                </div>
+                <div class="service-item card">
+                    <h3>Barba & Toalla</h3>
+                    <p>Perfilado de barba con tratamiento de toalla caliente.</p>
+                </div>
+                <div class="service-item card">
+                    <h3>Experiencia VIP</h3>
+                    <p>Servicio completo con bebida de cortesía.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sección de Reserva (Solo visible si logueado) -->
+        <section id="booking-section" class="section hidden">
+            <div class="card">
+                <h2 style="text-align:center">Reservar Cita</h2>
+                <form id="booking-form">
+                    <div class="form-group">
+                        <label>Servicio</label>
+                        <select id="service-select" required>
+                            <option value="">Cargando servicios...</option>
+                        </select>
+                        <div id="price-display" class="price-tag">Bs. 0.00</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Barbero</label>
+                        <select id="barber-select" required>
+                            <option value="Carlos">Carlos (Master Barber)</option>
+                            <option value="Andres">Andrés (Fade Specialist)</option>
+                            <option value="Lucia">Lucía (Stylist)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha y Hora</label>
+                        <input type="datetime-local" id="appointment-date" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Foto de Referencia (Opcional)</label>
+                        <input type="file" id="style-image" accept="image/*">
+                    </div>
+                    <button type="submit" class="btn-primary full-width">CONFIRMAR CITA</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- Historial (Solo visible si logueado) -->
+        <section id="history-section" class="section hidden">
+            <h2 class="section-title">Mis Citas</h2>
+            <div id="appointments-list"></div>
+        </section>
+    </main>
+
+    <script type="module" src="assets/js/app.js"></script>
+</body>
+</html>

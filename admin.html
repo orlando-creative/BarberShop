@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Neon Barber</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="admin-container">
+        <aside class="sidebar">
+            <h2>ADMINISTRACIÓN</h2>
+            <nav>
+                <button id="view-appointments" class="active">Citas</button>
+                <button id="view-stats">Estadísticas</button>
+                <button id="admin-logout">Salir</button>
+            </nav>
+        </aside>
+
+        <main class="dashboard-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Citas Hoy</h3>
+                    <p id="count-today" class="stat-number">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Ingresos (Mes)</h3>
+                    <p id="income-month" class="stat-number">Bs. 0.00</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Clientes</h3>
+                    <p id="total-clients" class="stat-number">0</p>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <h3>Gestión de Citas</h3>
+                <table id="admin-appointments-table">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Servicio</th>
+                            <th>Barbero</th>
+                            <th>Fecha</th>
+                            <th>Precio</th>
+                            <th>Ref.</th>
+                            <th>Estado</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="assets/js/admin.js"></script>
+</body>
+</html>
