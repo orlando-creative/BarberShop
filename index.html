@@ -6,23 +6,40 @@
     <title>Barbería Estilo & Corte - Bolivia</title>
     <link rel="stylesheet" href="assets/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
 </head>
 <body>
     <header>
         <div class="container">
             <h1>ESTILO & CORTE <span style="font-size:0.6em; color:var(--accent-color)">BO</span></h1>
-            <div id="auth-container">
-                <button id="login-btn" class="btn-outline">Iniciar Sesión</button>
-                <div id="user-info" class="hidden">
+            
+            <nav id="nav-menu" class="nav-menu">
+                <a href="#hero" class="nav-link">Inicio</a>
+                <a href="#services-info" class="nav-link">Servicios</a>
+                <a href="#gallery" class="nav-link">Galería</a>
+                <a href="#about" class="nav-link">Nosotros</a>
+                <a href="#contact" class="nav-link">Contacto</a>
+                
+                <!-- Botón de Acceso Unificado -->
+                <button id="login-btn" class="btn-primary">Acceder</button>
+                <div id="user-info" class="hidden user-info-nav">
                     <span id="user-name"></span>
-                    <button id="logout-btn" class="btn-outline">Salir</button>
+                    <button id="logout-btn" class="btn-outline btn-sm">Salir</button>
                 </div>
-            </div>
+            </nav>
+
+            <button id="nav-toggle" class="nav-toggle" aria-label="Menú">
+                <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+            </button>
         </div>
     </header>
 
-    <!-- Hero Section (Siempre visible) -->
-    <section class="hero">
+    <section id="hero" class="hero">
+        <div class="hero-slider">
+            <img src="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80" class="active" alt="Barberia 1">
+            <img src="https://images.unsplash.com/photo-1585747860715-2ba37e788b70?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80" alt="Barberia 2">
+            <img src="https://images.unsplash.com/photo-1621605815971-fbc98d665033?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80" alt="Barberia 3">
+        </div>
         <div class="container">
             <h2>Excelencia en Cada Corte</h2>
             <p>La experiencia definitiva de barbería clásica combinada con técnicas modernas en el corazón de Bolivia.</p>
@@ -49,16 +66,27 @@
             </div>
         </section>
 
+        <!-- Galería -->
+        <section id="gallery" class="section">
+            <h2 class="section-title">Nuestros Trabajos</h2>
+            <div class="gallery-grid">
+                <div class="gallery-item"><img src="https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=600&q=80" alt="Corte 1"></div>
+                <div class="gallery-item"><img src="https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=600&q=80" alt="Corte 2"></div>
+                <div class="gallery-item"><img src="https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&w=600&q=80" alt="Corte 3"></div>
+                <div class="gallery-item"><img src="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=600&q=80" alt="Corte 4"></div>
+            </div>
+        </section>
+
         <!-- Sección de Reserva (Solo visible si logueado) -->
         <section id="booking-section" class="section hidden">
             <div class="card">
                 <h2 style="text-align:center">Reservar Cita</h2>
                 <form id="booking-form">
+                    <!-- Selección Visual de Servicios -->
                     <div class="form-group">
-                        <label>Servicio</label>
-                        <select id="service-select" required>
-                            <option value="">Cargando servicios...</option>
-                        </select>
+                        <label>Selecciona tu Servicio</label>
+                        <div id="service-grid" class="service-selection-grid"></div>
+                        <input type="hidden" id="selected-service-id" required>
                         <div id="price-display" class="price-tag">Bs. 0.00</div>
                     </div>
                     <div class="form-group">
@@ -74,8 +102,11 @@
                         <input type="datetime-local" id="appointment-date" required>
                     </div>
                     <div class="form-group">
-                        <label>Foto de Referencia (Opcional)</label>
-                        <input type="file" id="style-image" accept="image/*">
+                        <label>Foto de Referencia <span class="optional-badge">Opcional</span></label>
+                        <div class="file-upload-wrapper" onclick="document.getElementById('style-image').click()">
+                            <span id="file-label">Haz clic para subir una imagen</span>
+                            <input type="file" id="style-image" accept="image/*" style="display:none" onchange="document.getElementById('file-label').textContent = this.files[0].name">
+                        </div>
                     </div>
                     <button type="submit" class="btn-primary full-width">CONFIRMAR CITA</button>
                 </form>
@@ -87,7 +118,65 @@
             <h2 class="section-title">Mis Citas</h2>
             <div id="appointments-list"></div>
         </section>
+
+        <!-- Nosotros -->
+        <section id="about" class="section">
+            <div class="about-grid">
+                <div class="about-img">
+                    <img src="https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=800&q=80" alt="Barbería Interior">
+                </div>
+                <div class="about-content">
+                    <h2 style="margin-top:0">Sobre Nosotros</h2>
+                    <p class="text-accent" style="font-weight:bold; margin-bottom:20px;">Más que una barbería, un estilo de vida.</p>
+                    <p>En Estilo & Corte BO, fusionamos la tradición de la barbería clásica con las tendencias más vanguardistas. Nuestro equipo de profesionales está dedicado a brindarte no solo un corte, sino una experiencia de cuidado personal completa.</p>
+                    <p>Ubicados en el corazón de la ciudad, ofrecemos un ambiente relajado donde cada detalle cuenta.</p>
+                </div>
+            </div>
+        </section>
     </main>
+
+    <!-- Contacto -->
+    <section id="contact" class="section contact-section">
+        <div class="container contact-container">
+            <h2 class="section-title">Contáctanos</h2>
+            <p>¿Tienes dudas o prefieres agendar por chat? Estamos disponibles para ti.</p>
+            
+            <a href="https://wa.me/59173632226?text=Hola,%20quisiera%20más%20información%20sobre%20sus%20servicios" target="_blank" class="btn-whatsapp">
+                <i class='bx bxl-whatsapp' style="font-size: 1.5rem;"></i>
+                Chat en WhatsApp
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-col">
+                    <h3>ESTILO & CORTE BO</h3>
+                    <p>Tu barbería de confianza en Bolivia. Calidad, estilo y profesionalismo en cada visita.</p>
+                </div>
+                <div class="footer-col">
+                    <h3>Enlaces Rápidos</h3>
+                    <a href="#hero">Inicio</a>
+                    <a href="#services-info">Servicios</a>
+                    <a href="#gallery">Galería</a>
+                    <a href="#contact">Contacto</a>
+                </div>
+                <div class="footer-col">
+    <h3>Síguenos</h3>
+    <div class="social-links">
+        <a href="#" class="social-text facebook">Facebook</a>
+        <a href="#" class="social-text instagram">Instagram</a>
+        <a href="#" class="social-text tiktok">TikTok</a>
+    </div>
+</div>
+            </div>
+            <div class="copyright">
+                &copy; 2024 Estilo & Corte BO. Todos los derechos reservados.
+            </div>
+        </div>
+    </footer>
 
     <script type="module" src="assets/js/app.js"></script>
 </body>

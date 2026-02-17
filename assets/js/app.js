@@ -3,98 +3,218 @@ import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstati
 import { collection, getDocs, addDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-document.addEventListener('DOMContentLoaded', async () => {
+// Usamos una estructura más limpia para evitar errores de scope
+document.addEventListener('DOMContentLoaded', () => {
     const loginBtn = document.getElementById('login-btn');
     const logoutBtn = document.getElementById('logout-btn');
     const userInfo = document.getElementById('user-info');
     const bookingSection = document.getElementById('booking-section');
     const historySection = document.getElementById('history-section');
-    const serviceSelect = document.getElementById('service-select');
+    const serviceGrid = document.getElementById('service-grid');
     const priceDisplay = document.getElementById('price-display');
     const bookingForm = document.getElementById('booking-form');
+    
+    const navToggle = document.getElementById('nav-toggle');
+    const navMenu = document.getElementById('nav-menu');
 
     let currentUser = null;
     let servicesMap = {};
 
-    onAuthStateChanged(auth, (user) => {
-        handleUserSession(user);
-    });
+    // --- LÓGICA DE NAVEGACIÓN ---
+    if(navToggle && navMenu) {
+        navToggle.addEventListener('click', () => navMenu.classList.toggle('active'));
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', () => navMenu.classList.remove('active'));
+        });
+    }
 
-    function handleUserSession(user) {
+    // --- ANIMACIÓN BARRA DE NAVEGACIÓN (Sticky Smart) ---
+    let previousScrollPosition = 0;
+    const header = document.querySelector('header');
+    
+    const handleScroll = () => {
+        const scrollPosition = window.scrollY;
+        const headerElement = document.querySelector('header');
+        
+        if (scrollPosition === 0) {
+            headerElement.classList.remove('scroll-up', 'scroll-down');
+            previousScrollPosition = 0;
+            return;
+        }
+        
+        const isScrollingDown = scrollPosition > previousScrollPosition;
+        
+        if (isScrollingDown) {
+            headerElement.classList.remove('scroll-up');
+            headerElement.classList.add('scroll-down');
+        } else {
+            headerElement.classList.remove('scroll-down');
+            headerElement.classList.add('scroll-up');
+        }
+        
+        previousScrollPosition = scrollPosition;
+    };
+    window.addEventListener('scroll', handleScroll);
+
+    // --- CARRUSEL HERO ---
+    const heroImages = document.querySelectorAll('.hero-slider img');
+    if(heroImages.length > 0) {
+        let currentImg = 0;
+        setInterval(() => {
+            heroImages[currentImg].classList.remove('active');
+            currentImg = (currentImg + 1) % heroImages.length;
+            heroImages[currentImg].classList.add('active');
+        }, 5000); // Cambia cada 5 segundos
+    }
+
+    // --- OBSERVAR ESTADO DE AUTH ---
+    onAuthStateChanged(auth, (user) => {
         if (user) {
             currentUser = user;
             document.getElementById('user-name').textContent = user.displayName || user.email;
-            loginBtn.classList.add('hidden');
-            userInfo.classList.remove('hidden');
-            bookingSection.classList.remove('hidden');
-            historySection.classList.remove('hidden');
+            
+            // Mostrar/Ocultar secciones
+            loginBtn?.classList.add('hidden');
+            userInfo?.classList.remove('hidden');
+            bookingSection?.classList.remove('hidden');
+            historySection?.classList.remove('hidden');
+            
+            // Cargar datos
             loadServices();
             loadAppointments();
         } else {
             currentUser = null;
-            loginBtn.classList.remove('hidden');
-            userInfo.classList.add('hidden');
-            bookingSection.classList.add('hidden');
-            historySection.classList.add('hidden');
-        }
-    }
-
-    loginBtn.addEventListener('click', async () => {
-        try {
-            await signInWithPopup(auth, googleProvider);
-        } catch (error) {
-            console.error(error);
-            alert("Error al iniciar sesión: " + error.message);
+            loginBtn?.classList.remove('hidden');
+            userInfo?.classList.add('hidden');
+            bookingSection?.classList.add('hidden');
+            historySection?.classList.add('hidden');
         }
     });
 
-    logoutBtn.addEventListener('click', async () => {
-        await signOut(auth);
-        window.location.reload();
-    });
+    // --- FUNCIONES ASÍNCRONAS CORREGIDAS ---
 
+    // ERROR CORREGIDO: Se agregó 'async' a la función
     async function loadServices() {
-        const querySnapshot = await getDocs(collection(db, "services"));
-        serviceSelect.innerHTML = '<option value="">Selecciona un servicio</option>';
-        
-        if (!querySnapshot.empty) {
+        try {
+            const querySnapshot = await getDocs(collection(db, "services"));
+            serviceGrid.innerHTML = ''; // Limpiar grid
+            
             querySnapshot.forEach((doc) => {
                 const service = doc.data();
-                // Guardamos precio y nombre para usarlos al reservar
                 servicesMap[doc.id] = { price: service.price_bob, name: service.name };
-                const option = document.createElement('option');
-                option.value = doc.id;
-                option.textContent = `${service.name} (${service.duration_minutes} min)`;
-                serviceSelect.appendChild(option);
+                
+                // Crear tarjeta de servicio
+                const card = document.createElement('div');
+                card.className = 'service-option';
+                card.innerHTML = `
+                    <h4>${service.name}</h4>
+                    <span>${service.duration_minutes} min</span>
+                `;
+                
+                card.addEventListener('click', () => {
+                    // Remover selección previa
+                    document.querySelectorAll('.service-option').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    document.getElementById('selected-service-id').value = doc.id;
+                    priceDisplay.textContent = formatCurrency(service.price_bob);
+                });
+                serviceGrid.appendChild(card);
             });
+        } catch (error) {
+            console.error("Error cargando servicios:", error);
         }
     }
 
-    serviceSelect.addEventListener('change', (e) => {
-        const serviceData = servicesMap[e.target.value];
-        const price = serviceData ? serviceData.price : 0;
-        priceDisplay.textContent = formatCurrency(price);
-    });
+    async function loadAppointments() {
+        if (!currentUser) return;
 
-    bookingForm.addEventListener('submit', async (e) => {
+        // Nota: Si esto falla, revisa la consola. Firebase te pedirá crear un "Índice" (Index)
+        const q = query(
+            collection(db, "appointments"), 
+            where("user_id", "==", currentUser.uid),
+            orderBy("appointment_date", "desc")
+        );
+
+        const list = document.getElementById('appointments-list');
+        list.innerHTML = '<p>Cargando citas...</p>';
+
+        try {
+            const querySnapshot = await getDocs(q);
+            list.innerHTML = ''; // Limpiar mensaje de carga
+
+            if (querySnapshot.empty) {
+                list.innerHTML = '<p>No tienes citas reservadas.</p>';
+                return;
+            }
+
+            querySnapshot.forEach((doc) => {
+                const app = doc.data();
+                const dateObj = new Date(app.appointment_date);
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.style.padding = '20px';
+                card.style.marginBottom = '10px';
+
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <strong>${app.service_name}</strong> con ${app.barber_name}<br>
+                            <small>${dateObj.toLocaleString('es-BO')}</small>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="color:var(--accent-color)">${formatCurrency(app.service_price)}</div>
+                            <span style="color: ${app.status === 'confirmed' ? '#4CAF50' : '#FF9800'}">
+                                ${app.status.toUpperCase()}
+                            </span>
+                        </div>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+        } catch (e) {
+            console.error("Error cargando citas:", e);
+            list.innerHTML = '<p>Error al cargar el historial.</p>';
+        }
+    }
+
+    // --- EVENTOS ---
+
+    if (loginBtn) {
+        loginBtn.addEventListener('click', async () => {
+            try {
+                await signInWithPopup(auth, googleProvider);
+            } catch (error) {
+                console.error("Error login:", error);
+                alert("Error: " + error.message);
+            }
+        });
+    }
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            await signOut(auth);
+            window.location.reload();
+        });
+    }
+
+    bookingForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const serviceId = serviceSelect.value;
+        const serviceId = document.getElementById('selected-service-id').value;
         const barber = document.getElementById('barber-select').value;
         const date = document.getElementById('appointment-date').value;
         const imageFile = document.getElementById('style-image').files[0];
 
-        if(!serviceId || !date) return alert('Completa todos los campos');
+        if(!serviceId || !date || !barber) return alert('Por favor, completa todos los campos.');
 
         let imageUrl = null;
         if (imageFile) {
             try {
-                const fileExt = imageFile.name.split('.').pop();
-                const fileName = `${currentUser.uid}-${Date.now()}.${fileExt}`;
+                const fileName = `app-${currentUser.uid}-${Date.now()}`;
                 const storageRef = ref(storage, `appointment-images/${fileName}`);
                 const snapshot = await uploadBytes(storageRef, imageFile);
                 imageUrl = await getDownloadURL(snapshot.ref);
-            } catch (uploadError) {
-                return alert('Error al subir imagen: ' + uploadError.message);
+            } catch (err) {
+                console.error("Error subiendo imagen:", err);
             }
         }
 
@@ -103,8 +223,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             await addDoc(collection(db, "appointments"), {
                 user_id: currentUser.uid,
                 user_email: currentUser.email,
-                user_name: currentUser.displayName || currentUser.email,
-                service_id: serviceId,
                 service_name: serviceData.name,
                 service_price: serviceData.price,
                 barber_name: barber,
@@ -116,55 +234,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             alert('¡Cita reservada con éxito!');
             bookingForm.reset();
-            priceDisplay.textContent = formatCurrency(0);
             loadAppointments();
         } catch (error) {
             alert('Error al reservar: ' + error.message);
         }
     });
-
-    async function loadAppointments() {
-        if (!currentUser) return;
-
-        const q = query(
-            collection(db, "appointments"), 
-            where("user_id", "==", currentUser.uid),
-            orderBy("appointment_date", "desc")
-        );
-
-        const list = document.getElementById('appointments-list');
-        list.innerHTML = '';
-
-        try {
-            const querySnapshot = await getDocs(q);
-            querySnapshot.forEach((doc) => {
-                const app = doc.data();
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.style.padding = '20px';
-                const dateObj = new Date(app.appointment_date);
-                
-                const serviceName = app.service_name || "Servicio";
-                const servicePrice = app.service_price || 0;
-
-                card.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <strong>${serviceName}</strong> con ${app.barber_name}<br>
-                            <small>${dateObj.toLocaleString('es-BO')}</small>
-                        </div>
-                        <div style="text-align:right;">
-                            <div style="color:var(--accent-color)">${formatCurrency(servicePrice)}</div>
-                            <span style="color: ${app.status === 'confirmed' ? 'var(--accent-color)' : 'orange'}">
-                                ${app.status.toUpperCase()}
-                            </span>
-                        </div>
-                    </div>
-                `;
-                list.appendChild(card);
-            });
-        } catch (e) {
-            console.error("Error cargando citas:", e);
-        }
-    }
 });
