@@ -6,6 +6,7 @@
     <title>Admin Dashboard - Neon Barber</title>
     <link rel="stylesheet" href="assets/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
 </head>
 <body>
     <div class="admin-container">
@@ -36,22 +37,15 @@
             </div>
 
             <div id="appointments-section" class="table-container">
-                <h3>Gestión de Citas</h3>
-                <table id="admin-appointments-table">
-                    <thead>
-                        <tr>
-                            <th>Cliente</th>
-                            <th>Servicio</th>
-                            <th>Barbero</th>
-                            <th>Fecha</th>
-                            <th>Precio</th>
-                            <th>Ref.</th>
-                            <th>Estado</th>
-                            <th>Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+                <div class="appointments-header">
+                    <h3>Agenda de Citas</h3>
+                    <div id="bulk-actions" class="bulk-actions hidden">
+                        <span id="selection-count">0 seleccionados</span>
+                        <button id="bulk-confirm" class="btn-bulk confirm"><i class='bx bx-check'></i> Confirmar</button>
+                        <button id="bulk-cancel" class="btn-bulk cancel"><i class='bx bx-x'></i> Cancelar</button>
+                    </div>
+                </div>
+                <div id="appointments-agenda" class="agenda-container"></div>
             </div>
 
             <!-- Sección de Gestión de Servicios (oculta por defecto) -->

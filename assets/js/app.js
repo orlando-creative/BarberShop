@@ -1,6 +1,6 @@
 import { auth, db, supabase, googleProvider, formatCurrency } from './config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { collection, getDocs, addDoc, query, where, orderBy, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { collection, getDocs, addDoc, query, where, orderBy, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // Usamos una estructura más limpia para evitar errores de scope
 document.addEventListener('DOMContentLoaded', () => {
@@ -98,6 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Cargar datos
             loadServices();
             loadAppointments();
+            initializePushNotifications(); // Iniciar lógica de notificaciones push
         } else {
             currentUser = null;
             loginBtn?.classList.remove('hidden');
@@ -108,6 +109,75 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('countdown-section')?.classList.add('hidden');
         }
     });
+
+    // --- LÓGICA DE NOTIFICACIONES PUSH ---
+
+    // Helper para convertir la clave VAPID a un formato usable
+    function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding)
+            .replace(/-/g, '+')
+            .replace(/_/g, '/');
+
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    }
+
+    async function saveSubscription(subscription) {
+        if (!currentUser) return;
+        // Usaremos una nueva colección 'push_subscriptions' para guardar los datos.
+        const subscriptionRef = doc(db, "push_subscriptions", currentUser.uid);
+        try {
+            // Firestore necesita un objeto plano, por eso convertimos la suscripción.
+            const plainSubscription = JSON.parse(JSON.stringify(subscription));
+            await setDoc(subscriptionRef, {
+                subscription: plainSubscription,
+                userId: currentUser.uid,
+                updatedAt: new Date().toISOString()
+            }, { merge: true }); // 'merge: true' crea o actualiza el documento.
+            console.log('Suscripción para notificaciones guardada.');
+        } catch (error) {
+            console.error('Error al guardar la suscripción:', error);
+        }
+    }
+
+    async function initializePushNotifications() {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            console.warn('Las notificaciones push no son soportadas en este navegador.');
+            return;
+        }
+
+        try {
+            const swRegistration = await navigator.serviceWorker.register('/sw.js');
+            console.log('Service Worker registrado con éxito.');
+
+            let subscription = await swRegistration.pushManager.getSubscription();
+            if (subscription === null) {
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    console.warn('El permiso para notificaciones no fue concedido.');
+                    return;
+                }
+
+                // IMPORTANTE: Debes generar tus propias claves VAPID y poner la pública aquí.
+                const VAPID_PUBLIC_KEY = "BOaRHX9yQ3W8E_Hbss8_Q0daLrpA1KY_-EUfx-IdG9YIhsH_iLbPZQUv6c0zxdHsoAtVoL6wFoHOP7nzj2aNyN8";
+                const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+                
+                subscription = await swRegistration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: applicationServerKey
+                });
+                await saveSubscription(subscription);
+            }
+        } catch (error) {
+            console.error('Error con el Service Worker o la suscripción push:', error);
+        }
+    }
 
     // --- FUNCIONES ASÍNCRONAS CORREGIDAS ---
 

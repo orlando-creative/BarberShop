@@ -76,6 +76,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     cancelEditBtn.addEventListener('click', () => {
         resetServiceForm();
     });
+    
+    // Event listeners para acciones masivas
+    const bulkConfirmBtn = document.getElementById('bulk-confirm');
+    const bulkCancelBtn = document.getElementById('bulk-cancel');
+    
+    if(bulkConfirmBtn) bulkConfirmBtn.addEventListener('click', () => processBulkAction('confirmed'));
+    if(bulkCancelBtn) bulkCancelBtn.addEventListener('click', () => processBulkAction('cancelled'));
+
+    let selectedAppointments = new Set();
 
     async function loadDashboardData() {
         const q = query(collection(db, "appointments"), orderBy("appointment_date", "desc"));
@@ -88,48 +97,97 @@ document.addEventListener('DOMContentLoaded', async () => {
         let monthIncome = 0;
         let uniqueClients = new Set();
 
-        const tbody = document.querySelector('#admin-appointments-table > tbody');
-        tbody.innerHTML = '';
+        const agendaContainer = document.getElementById('appointments-agenda');
+        agendaContainer.innerHTML = '';
+        selectedAppointments.clear();
+        updateBulkUI();
+
+        // Agrupar citas por fecha
+        const appointmentsByDate = {};
 
             querySnapshot.forEach((docSnap) => {
                 const app = docSnap.data();
                 const appId = docSnap.id;
+                app.id = appId; // Guardar ID en el objeto
 
                 if (app.appointment_date.startsWith(today)) todayCount++;
                 if (app.status !== 'cancelled') monthIncome += (app.service_price || 0);
                 if (app.user_email) uniqueClients.add(app.user_email);
 
-                const tr = document.createElement('tr');
+                const dateKey = app.appointment_date.split('T')[0];
+                if (!appointmentsByDate[dateKey]) appointmentsByDate[dateKey] = [];
+                appointmentsByDate[dateKey].push(app);
+            });
+
+            // Ordenar fechas (más reciente primero)
+            const sortedDates = Object.keys(appointmentsByDate).sort((a, b) => new Date(b) - new Date(a));
+
+            sortedDates.forEach(date => {
+                const dateGroup = document.createElement('div');
+                dateGroup.className = 'date-group';
+
+                // Header de Fecha
+                const dateObj = new Date(date + 'T12:00:00');
+                const dateString = dateObj.toLocaleDateString('es-BO', { weekday: 'long', day: 'numeric', month: 'long' });
                 
-                const clientName = app.user_name || 'Desconocido';
-                const clientEmail = app.user_email || '';
-                const serviceName = app.service_name || 'Servicio';
-                const price = app.service_price || 0;
+                const header = document.createElement('div');
+                header.className = 'date-header';
+                header.innerHTML = `<span>${dateString}</span> <span>${appointmentsByDate[date].length} citas</span>`;
+                dateGroup.appendChild(header);
 
-                tr.innerHTML = `
-                    <td data-label="Cliente">${clientName}<br><small>${clientEmail}</small></td>
-                    <td data-label="Servicio">${serviceName}</td>
-                    <td data-label="Barbero">${app.barber_name}</td>
-                    <td data-label="Fecha">${new Date(app.appointment_date).toLocaleString('es-BO')}</td>
-                    <td data-label="Precio">${formatCurrency(price)}</td>
-                    <td data-label="Ref.">${app.image_url ? `<a href="${app.image_url}" target="_blank" style="color:var(--accent-color)">Ver</a>` : '-'}</td>
-                    <td data-label="Estado" style="color:${getStatusColor(app.status)}">${app.status}</td>
-                    <td data-label="Acción">
-                        ${app.status === 'pending' ? `<button class="btn-action-confirm" data-id="${appId}">✓</button>` : ''}
-                        ${app.status !== 'cancelled' ? `<button class="btn-action-cancel" data-id="${appId}">X</button>` : ''}
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
+                // Grid de Tarjetas
+                const grid = document.createElement('div');
+                grid.className = 'appointments-grid-view';
 
-            // Event listeners para botones dinámicos
-            document.querySelectorAll('.btn-action-confirm').forEach(btn => {
-                btn.addEventListener('click', () => updateStatus(btn.dataset.id, 'confirmed'));
-                btn.style.cssText = "color:var(--accent-color); background:none; border:1px solid var(--accent-color); cursor:pointer; margin-right:5px;";
-            });
-            document.querySelectorAll('.btn-action-cancel').forEach(btn => {
-                btn.addEventListener('click', () => updateStatus(btn.dataset.id, 'cancelled'));
-                btn.style.cssText = "color:red; background:none; border:1px solid red; cursor:pointer;";
+                // Ordenar citas por hora dentro del día
+                appointmentsByDate[date].sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date));
+
+                appointmentsByDate[date].forEach(app => {
+                    const card = document.createElement('div');
+                    card.className = `app-card`;
+                    card.dataset.id = app.id;
+
+                    const time = new Date(app.appointment_date).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' });
+                    
+                    card.innerHTML = `
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" class="app-checkbox" value="${app.id}">
+                        </div>
+                        <div class="app-card-content">
+                            <div class="app-card-header">
+                                <span class="app-time">${time}</span>
+                                <span class="app-status status-${app.status}">${app.status}</span>
+                            </div>
+                            <div class="app-client">${app.user_name || 'Cliente'}</div>
+                            <div class="app-service">${app.service_name} - ${formatCurrency(app.service_price)}</div>
+                            <div class="app-barber"><i class='bx bx-user'></i> ${app.barber_name} ${app.image_url ? ` | <a href="${app.image_url}" target="_blank" style="color:var(--accent-color)">Ver Foto</a>` : ''}</div>
+                        </div>
+                    `;
+
+                    // Lógica de selección
+                    card.addEventListener('click', (e) => {
+                        if (e.target.tagName === 'A') return; // Permitir clic en enlaces
+                        const checkbox = card.querySelector('.app-checkbox');
+                        // Si no se hizo clic directamente en el checkbox, invertirlo
+                        if (e.target !== checkbox) {
+                            checkbox.checked = !checkbox.checked;
+                        }
+                        
+                        if (checkbox.checked) {
+                            selectedAppointments.add(app.id);
+                            card.classList.add('selected');
+                        } else {
+                            selectedAppointments.delete(app.id);
+                            card.classList.remove('selected');
+                        }
+                        updateBulkUI();
+                    });
+
+                    grid.appendChild(card);
+                });
+                
+                dateGroup.appendChild(grid);
+                agendaContainer.appendChild(dateGroup);
             });
 
             document.getElementById('count-today').textContent = todayCount;
@@ -137,6 +195,36 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('total-clients').textContent = uniqueClients.size;
         } catch (error) {
             console.error("Error loading dashboard:", error);
+        }
+    }
+
+    function updateBulkUI() {
+        const count = selectedAppointments.size;
+        const bulkDiv = document.getElementById('bulk-actions');
+        const countSpan = document.getElementById('selection-count');
+        
+        countSpan.textContent = `${count} seleccionados`;
+        if (count > 0) {
+            bulkDiv.classList.remove('hidden');
+        } else {
+            bulkDiv.classList.add('hidden');
+        }
+    }
+
+    async function processBulkAction(newStatus) {
+        if (!confirm(`¿Estás seguro de cambiar ${selectedAppointments.size} citas a estado "${newStatus}"?`)) return;
+        
+        const promises = Array.from(selectedAppointments).map(id => {
+            return updateDoc(doc(db, "appointments", id), { status: newStatus });
+        });
+
+        try {
+            await Promise.all(promises);
+            alert('Citas actualizadas correctamente.');
+            loadDashboardData(); // Recargar
+        } catch (error) {
+            console.error("Error en acción masiva:", error);
+            alert("Hubo un error al actualizar algunas citas.");
         }
     }
 
@@ -264,17 +352,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error("Error eliminando servicio:", error);
         }
     }
-
-    async function updateStatus(id, newStatus) {
-        if(!confirm(`¿Cambiar estado a ${newStatus}?`)) return;
-        try {
-            const appRef = doc(db, "appointments", id);
-            await updateDoc(appRef, { status: newStatus });
-            loadDashboardData();
-        } catch (e) {
-            alert("Error actualizando: " + e.message);
-        }
-    };
 
     function getStatusColor(status) {
         if (status === 'confirmed') return 'var(--accent-color)';
