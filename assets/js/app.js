@@ -34,10 +34,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const handleScroll = () => {
         const scrollPosition = window.scrollY;
-        const headerElement = document.querySelector('header');
         
         if (scrollPosition === 0) {
-            headerElement.classList.remove('scroll-up', 'scroll-down');
+            header.classList.remove('scroll-up', 'scroll-down');
             previousScrollPosition = 0;
             return;
         }
@@ -45,11 +44,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const isScrollingDown = scrollPosition > previousScrollPosition;
         
         if (isScrollingDown) {
-            headerElement.classList.remove('scroll-up');
-            headerElement.classList.add('scroll-down');
+            header.classList.remove('scroll-up');
+            header.classList.add('scroll-down');
         } else {
-            headerElement.classList.remove('scroll-down');
-            headerElement.classList.add('scroll-up');
+            header.classList.remove('scroll-down');
+            header.classList.add('scroll-up');
         }
         
         previousScrollPosition = scrollPosition;
@@ -71,7 +70,8 @@ document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, (user) => {
         if (user) {
             currentUser = user;
-            document.getElementById('user-name').textContent = user.displayName || user.email;
+            const userNameDisplay = document.getElementById('user-name');
+            if (userNameDisplay) userNameDisplay.textContent = user.displayName || user.email;
             
             // Mostrar/Ocultar secciones
             loginBtn?.classList.add('hidden');
@@ -197,7 +197,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    bookingForm?.addEventListener('submit', async (e) => {
+    if (bookingForm) {
+        bookingForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const serviceId = document.getElementById('selected-service-id').value;
         const barber = document.getElementById('barber-select').value;
@@ -239,4 +240,5 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Error al reservar: ' + error.message);
         }
     });
+    }
 });

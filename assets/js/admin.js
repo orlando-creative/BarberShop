@@ -13,10 +13,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadDashboardData();
     });
 
-    document.getElementById('admin-logout').addEventListener('click', async () => {
-        await signOut(auth);
-        window.location.href = 'index.html';
-    });
+    const adminLogoutBtn = document.getElementById('admin-logout');
+    if (adminLogoutBtn) {
+        adminLogoutBtn.addEventListener('click', async () => {
+            await signOut(auth);
+            window.location.href = 'index.html';
+        });
+    }
 
     async function loadDashboardData() {
         const q = query(collection(db, "appointments"), orderBy("appointment_date", "desc"));
