@@ -1,7 +1,6 @@
-import { auth, db, storage, googleProvider, formatCurrency } from './config.js';
+import { auth, db, supabase, googleProvider, formatCurrency } from './config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { collection, getDocs, addDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+import { collection, getDocs, addDoc, query, where, orderBy, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // Usamos una estructura más limpia para evitar errores de scope
 document.addEventListener('DOMContentLoaded', () => {
@@ -19,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentUser = null;
     let servicesMap = {};
+    let countdownInterval = null;
 
     // --- LÓGICA DE NAVEGACIÓN ---
     if(navToggle && navMenu) {
@@ -67,8 +67,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- OBSERVAR ESTADO DE AUTH ---
-    onAuthStateChanged(auth, (user) => {
+    onAuthStateChanged(auth, async (user) => {
         if (user) {
+            // --- Redirección para administradores ---
+            try {
+                const userDocRef = doc(db, "users", user.uid);
+                const userDocSnap = await getDoc(userDocRef);
+    
+                if (userDocSnap.exists() && userDocSnap.data().role === 'admin') {
+                    // Si es admin y está en la página principal, redirigir al dashboard
+                    const path = window.location.pathname;
+                    if (path.endsWith('/') || path.endsWith('index.html')) {
+                        window.location.href = 'admin.html';
+                        return; // Detener la ejecución para evitar cargar el resto de la página de usuario
+                    }
+                }
+            } catch (error) {
+                console.error("Error al verificar rol de admin en login:", error);
+            }
             currentUser = user;
             const userNameDisplay = document.getElementById('user-name');
             if (userNameDisplay) userNameDisplay.textContent = user.displayName || user.email;
@@ -88,6 +104,8 @@ document.addEventListener('DOMContentLoaded', () => {
             userInfo?.classList.add('hidden');
             bookingSection?.classList.add('hidden');
             historySection?.classList.add('hidden');
+            if (countdownInterval) clearInterval(countdownInterval);
+            document.getElementById('countdown-section')?.classList.add('hidden');
         }
     });
 
@@ -107,8 +125,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const card = document.createElement('div');
                 card.className = 'service-option';
                 card.innerHTML = `
-                    <h4>${service.name}</h4>
-                    <span>${service.duration_minutes} min</span>
+                    <img src="${service.image_url || 'https://via.placeholder.com/150'}" alt="${service.name}">
+                    <div class="service-option-info">
+                        <h4>${service.name}</h4>
+                        <span>${service.duration_minutes} min</span>
+                    </div>
                 `;
                 
                 card.addEventListener('click', () => {
@@ -139,6 +160,13 @@ document.addEventListener('DOMContentLoaded', () => {
         list.innerHTML = '<p>Cargando citas...</p>';
 
         try {
+            // Limpiar contador anterior antes de cargar nuevas citas
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+            document.getElementById('countdown-section').classList.add('hidden');
+
             const querySnapshot = await getDocs(q);
             list.innerHTML = ''; // Limpiar mensaje de carga
 
@@ -147,8 +175,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            querySnapshot.forEach((doc) => {
-                const app = doc.data();
+            const appointments = [];
+            querySnapshot.forEach(doc => appointments.push(doc.data()));
+
+            let nextAppointment = null;
+            const now = new Date();
+
+            // La lista está ordenada de más nueva a más vieja (desc).
+            // Buscamos la próxima cita recorriendo la lista al revés.
+            for (let i = appointments.length - 1; i >= 0; i--) {
+                const app = appointments[i];
+                const dateObjCheck = new Date(app.appointment_date);
+                if (dateObjCheck > now && (app.status === 'pending' || app.status === 'confirmed')) {
+                    nextAppointment = app;
+                    break; // Encontramos la cita futura más cercana
+                }
+            }
+
+            appointments.forEach((app) => {
                 const dateObj = new Date(app.appointment_date);
                 const card = document.createElement('div');
                 card.className = 'card';
@@ -171,10 +215,54 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
                 list.appendChild(card);
             });
+
+            // Si se encontró una próxima cita, iniciar el contador
+            if (nextAppointment) {
+                const countdownSection = document.getElementById('countdown-section');
+                countdownSection.classList.remove('hidden');
+                startCountdown(
+                    nextAppointment.appointment_date, 
+                    `${nextAppointment.service_name} con ${nextAppointment.barber_name}`
+                );
+            }
+            else {
+                console.log("No se encontró una próxima cita válida para mostrar el contador.");
+            }
+
         } catch (e) {
             console.error("Error cargando citas:", e);
             list.innerHTML = '<p>Error al cargar el historial.</p>';
         }
+    }
+
+    function startCountdown(targetDate, details) {
+        if (countdownInterval) clearInterval(countdownInterval);
+
+        const detailsEl = document.getElementById('next-appointment-details');
+        detailsEl.textContent = details;
+
+        const daysEl = document.getElementById('days');
+        const hoursEl = document.getElementById('hours');
+        const minutesEl = document.getElementById('minutes');
+        const secondsEl = document.getElementById('seconds');
+
+        const targetTime = new Date(targetDate).getTime();
+
+        countdownInterval = setInterval(() => {
+            const now = new Date().getTime();
+            const distance = targetTime - now;
+
+            if (distance < 0) {
+                clearInterval(countdownInterval);
+                document.getElementById('countdown-section').classList.add('hidden');
+                return;
+            }
+
+            daysEl.textContent = String(Math.floor(distance / (1000 * 60 * 60 * 24))).padStart(2, '0');
+            hoursEl.textContent = String(Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))).padStart(2, '0');
+            minutesEl.textContent = String(Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
+            secondsEl.textContent = String(Math.floor((distance % (1000 * 60)) / 1000)).padStart(2, '0');
+        }, 1000);
     }
 
     // --- EVENTOS ---
@@ -207,15 +295,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if(!serviceId || !date || !barber) return alert('Por favor, completa todos los campos.');
 
+        // Validación de fecha futura
+        const selectedDate = new Date(date);
+        if (selectedDate < new Date()) {
+            return alert('No puedes reservar una cita en una fecha pasada. Por favor, elige una fecha y hora futuras.');
+        }
+
         let imageUrl = null;
         if (imageFile) {
             try {
-                const fileName = `app-${currentUser.uid}-${Date.now()}`;
-                const storageRef = ref(storage, `appointment-images/${fileName}`);
-                const snapshot = await uploadBytes(storageRef, imageFile);
-                imageUrl = await getDownloadURL(snapshot.ref);
+                // Lógica de subida con Supabase
+                const fileName = `${currentUser.uid}-${Date.now()}`;
+                const { error: uploadError } = await supabase.storage
+                    .from('appointment-images')
+                    .upload(fileName, imageFile);
+
+                if (uploadError) throw uploadError;
+
+                const { data: urlData } = supabase.storage.from('appointment-images').getPublicUrl(fileName);
+                imageUrl = urlData.publicUrl;
             } catch (err) {
-                console.error("Error subiendo imagen:", err);
+                console.error("Error subiendo imagen a Supabase:", err);
             }
         }
 
@@ -223,6 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const serviceData = servicesMap[serviceId];
             await addDoc(collection(db, "appointments"), {
                 user_id: currentUser.uid,
+                user_name: currentUser.displayName,
                 user_email: currentUser.email,
                 service_name: serviceData.name,
                 service_price: serviceData.price,

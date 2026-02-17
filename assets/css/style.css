@@ -175,6 +175,8 @@ input:focus, select:focus { outline: none; border-color: var(--accent-color); }
 
 table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: var(--shadow); border-radius: 8px; overflow: hidden; }
 th { background: var(--secondary-color); color: #fff; padding: 15px; text-align: left; font-weight: normal; }
+/* Selector más específico para evitar conflictos */
+table th { font-weight: bold; }
 td { padding: 15px; border-bottom: 1px solid #eee; color: var(--text-main); }
 tr:last-child td { border-bottom: none; }
 
@@ -269,12 +271,111 @@ footer { background-color: var(--secondary-color); color: #fff; padding: 50px 0 
 .social-text.instagram:hover { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%); }
 .social-text.tiktok:hover { background-color: #000000; border: 1px solid #333; }
 
-.copyright { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px; font-size: 0.8rem; color: #666; }
+.copyright { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px; font-size: 0.8rem; color: #aaa; }
+
+/* Estilos para la selección de servicios del cliente */
+.service-selection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.service-option {
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    overflow: hidden;
+    position: relative;
+}
+
+.service-option:hover {
+    border-color: var(--accent-color);
+    transform: translateY(-3px);
+}
+
+.service-option.selected {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px var(--accent-color);
+}
+
+.service-option img { width: 100%; height: 100px; object-fit: cover; display: block; }
+.service-option-info { padding: 15px 10px; }
+.service-option h4 { font-size: 1rem; margin: 0 0 5px 0; font-family: var(--font-body); }
+.service-option span { font-size: 0.9rem; color: var(--text-light); }
+
+/* Estilos para gestión de servicios en Admin */
+.service-management-layout { display: grid; grid-template-columns: 380px 1fr; gap: 30px; }
+.admin-services-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; align-content: start; }
+.admin-service-card { background: #fff; border-radius: 8px; box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; }
+.admin-service-card img {
+    width: 100%; height: 150px;
+    object-fit: contain; /* Muestra la imagen completa */
+    background-color: #f0f0f0; /* Fondo para el espacio sobrante */
+}
+.admin-service-card-content { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; }
+.admin-service-card-content h4 { margin: 0 0 10px 0; font-size: 1.1rem; }
+.admin-service-card-info { display: flex; justify-content: space-between; color: var(--text-light); margin-bottom: 15px; font-size: 0.9rem; }
+.admin-service-card-actions { margin-top: auto; display: flex; gap: 10px; }
+.btn-action-edit, .btn-action-delete { flex-grow: 1; padding: 8px; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; transition: background-color 0.2s; }
+.btn-action-edit { background-color: #e8f0fe; color: #1967d2; }
+.btn-action-edit:hover { background-color: #d2e3fc; }
+.btn-action-delete { background-color: #fce8e6; color: #c5221f; }
+.btn-action-delete:hover { background-color: #f9bdbb; }
+
+/* Estilos para el contador de cita */
+#countdown-timer span {
+    padding: 0 10px;
+    border-right: 1px solid rgba(255,255,255,0.2);
+}
+#countdown-timer span:last-child { border-right: none; }
+
+@media (max-width: 1024px) {
+    .service-management-layout {
+        grid-template-columns: 1fr;
+    }
+}
 
 @media (max-width: 768px) {
     .admin-container { flex-direction: column; }
-    .sidebar { width: 100%; }
+    .sidebar { 
+        width: 100%; 
+        display: flex;
+        justify-content: center;
+        padding: 10px;
+    }
+    .sidebar h2 { display: none; }
+    .sidebar nav { display: flex; gap: 10px; }
+    .sidebar nav button { border-left: none; border-bottom: 3px solid transparent; padding: 10px; }
+    .sidebar nav button.active, .sidebar nav button:hover { border-bottom-color: var(--accent-color); background: none; }
     
+    /* Tabla de admin responsiva */
+    #admin-appointments-table { border: 0; }
+    #admin-appointments-table thead { display: none; }
+    #admin-appointments-table tr {
+        display: block;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        background: #fff;
+        border: 1px solid var(--border-color);
+    }
+    #admin-appointments-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        text-align: right;
+        border-bottom: 1px dotted #ccc;
+        padding: 12px 15px;
+    }
+    #admin-appointments-table td:last-child { border-bottom: 0; }
+    #admin-appointments-table td::before {
+        content: attr(data-label);
+        font-weight: bold;
+    }
+
     /* Mobile Menu */
     .nav-toggle { display: flex; }
     .nav-menu {

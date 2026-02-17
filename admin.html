@@ -14,6 +14,7 @@
             <nav>
                 <button id="view-appointments" class="active">Citas</button>
                 <button id="view-stats">Estadísticas</button>
+                <button id="view-services">Servicios</button>
                 <button id="admin-logout">Salir</button>
             </nav>
         </aside>
@@ -34,7 +35,7 @@
                 </div>
             </div>
 
-            <div class="table-container">
+            <div id="appointments-section" class="table-container">
                 <h3>Gestión de Citas</h3>
                 <table id="admin-appointments-table">
                     <thead>
@@ -51,6 +52,38 @@
                     </thead>
                     <tbody></tbody>
                 </table>
+            </div>
+
+            <!-- Sección de Gestión de Servicios (oculta por defecto) -->
+            <div id="services-section" class="hidden">
+                <h3>Gestión de Servicios</h3>
+                <div class="service-management-layout">
+                    <div class="card">
+                        <form id="service-form">
+                            <input type="hidden" id="service-id">
+                            <h4 id="form-title">Añadir Nuevo Servicio</h4>
+                            <div class="form-group">
+                                <label for="service-name">Nombre del Servicio</label>
+                                <input type="text" id="service-name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="service-price">Precio (Bs.)</label>
+                                <input type="number" id="service-price" step="0.01" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="service-duration">Duración (minutos)</label>
+                                <input type="number" id="service-duration" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="service-image">Imagen del Servicio</label>
+                                <input type="file" id="service-image" accept="image/*">
+                            </div>
+                            <button type="submit" class="btn-primary full-width">Guardar Servicio</button>
+                            <button type="button" id="cancel-edit-btn" class="btn-outline full-width hidden" style="border-color: #ccc; color: #333;">Cancelar Edición</button>
+                        </form>
+                    </div>
+                    <div id="admin-services-list" class="admin-services-grid"></div>
+                </div>
             </div>
         </main>
     </div>
