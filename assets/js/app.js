@@ -22,9 +22,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- LÓGICA DE NAVEGACIÓN ---
     if(navToggle && navMenu) {
-        navToggle.addEventListener('click', () => navMenu.classList.toggle('active'));
+        navToggle.addEventListener('click', () => {
+            navMenu.classList.toggle('active');
+            navToggle.classList.toggle('active'); // Para animar el icono
+        });
         document.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', () => navMenu.classList.remove('active'));
+            link.addEventListener('click', () => {
+                navMenu.classList.remove('active');
+                navToggle.classList.remove('active');
+            });
         });
     }
 
@@ -66,6 +72,37 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 5000); // Cambia cada 5 segundos
     }
 
+    // --- ANIMACIÓN SCROLL (REVEAL) ---
+    const revealElements = document.querySelectorAll('.reveal');
+    const revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('active');
+                // Opcional: dejar de observar una vez animado
+                // revealObserver.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.15 }); // Se activa cuando el 15% del elemento es visible
+
+    revealElements.forEach(el => revealObserver.observe(el));
+
+    // --- LÓGICA DROPDOWN USUARIO ---
+    const userProfileContainer = document.getElementById('user-info');
+    if(userProfileContainer) {
+        userProfileContainer.addEventListener('click', (e) => {
+            // Evitar que se cierre si clickeamos dentro del dropdown
+            if(e.target.closest('.user-dropdown')) return;
+            userProfileContainer.classList.toggle('active');
+        });
+
+        // Cerrar dropdown al hacer click fuera
+        document.addEventListener('click', (e) => {
+            if (!userProfileContainer.contains(e.target)) {
+                userProfileContainer.classList.remove('active');
+            }
+        });
+    }
+
     // --- OBSERVAR ESTADO DE AUTH ---
     onAuthStateChanged(auth, async (user) => {
         if (user) {
@@ -87,7 +124,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             currentUser = user;
             const userNameDisplay = document.getElementById('user-name');
-            if (userNameDisplay) userNameDisplay.textContent = user.displayName || user.email;
+            const userAvatarDisplay = document.getElementById('header-avatar');
+            
+            if (userNameDisplay) userNameDisplay.textContent = (user.displayName || user.email).split(' ')[0]; // Solo primer nombre
+            if (userAvatarDisplay) {
+                // Usar foto de Google o un placeholder con la inicial
+                userAvatarDisplay.src = user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || 'User'}&background=c5a059&color=fff`;
+            }
             
             // Mostrar/Ocultar secciones
             loginBtn?.classList.add('hidden');
@@ -189,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             querySnapshot.forEach((doc) => {
                 const service = doc.data();
-                servicesMap[doc.id] = { price: service.price_bob, name: service.name };
+                servicesMap[doc.id] = { price: service.price_bob, name: service.name, duration: service.duration_minutes || 30 };
                 
                 // Crear tarjeta de servicio
                 const card = document.createElement('div');
@@ -370,6 +413,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedDate < new Date()) {
             return alert('No puedes reservar una cita en una fecha pasada. Por favor, elige una fecha y hora futuras.');
         }
+        
+        // Verificar disponibilidad
+        let isAvailable = true;
+        try {
+            isAvailable = await checkAvailability(selectedDate, parseInt(servicesMap[serviceId].duration), barber);
+        } catch (error) {
+            console.error("Error verificando disponibilidad:", error);
+            if (error.code === 'failed-precondition' && error.message.includes('index')) {
+                alert("Falta crear un índice en Firebase. Revisa la consola (F12) y abre el enlace que aparece en el error.");
+            } else if (error.code === 'permission-denied') {
+                alert("Error de permisos. Configura las reglas de Firestore para permitir lectura de citas.");
+            } else {
+                alert("Error al verificar disponibilidad: " + error.message);
+            }
+            return;
+        }
+
+        if (!isAvailable) return; // La función checkAvailability maneja la alerta y sugerencias
 
         let imageUrl = null;
         if (imageFile) {
@@ -411,5 +472,111 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Error al reservar: ' + error.message);
         }
     });
+    }
+
+    // --- LÓGICA DE DISPONIBILIDAD ---
+    async function checkAvailability(requestedDate, durationMinutes, barberName) {
+        // Definir rango del día para buscar citas existentes
+        const startOfDay = new Date(requestedDate);
+        startOfDay.setHours(0,0,0,0);
+        const endOfDay = new Date(requestedDate);
+        endOfDay.setHours(23,59,59,999);
+
+        // Calcular inicio y fin de la nueva cita
+        const newStart = requestedDate.getTime();
+        const newEnd = newStart + (durationMinutes * 60000);
+
+        // Validar horario comercial (8:00 AM - 11:00 PM)
+        const hour = requestedDate.getHours();
+        if (hour < 8 || hour >= 23) {
+            alert("La barbería atiende de 08:00 a 23:00. Por favor selecciona otro horario.");
+            return false;
+        }
+
+        // Buscar citas del mismo barbero en ese día
+        const q = query(
+            collection(db, "appointments"),
+            where("barber_name", "==", barberName),
+            where("appointment_date", ">=", startOfDay.toISOString()),
+            where("appointment_date", "<=", endOfDay.toISOString())
+        );
+
+        const snapshot = await getDocs(q);
+        let conflict = false;
+        const busySlots = [];
+
+        snapshot.forEach(doc => {
+            const app = doc.data();
+            if (app.status === 'cancelled') return;
+
+            const existingStart = new Date(app.appointment_date).getTime();
+            // Asumimos 30 min si no hay duración guardada en citas antiguas, o buscamos el servicio
+            // Para simplificar, usaremos 30 min como fallback o idealmente guardar duration en appointment
+            const existingDuration = 30; 
+            const existingEnd = existingStart + (existingDuration * 60000);
+
+            busySlots.push({ start: existingStart, end: existingEnd });
+
+            // Lógica de colisión: (StartA < EndB) y (EndA > StartB)
+            if (newStart < existingEnd && newEnd > existingStart) {
+                conflict = true;
+            }
+        });
+
+        if (conflict) {
+            alert(`El barbero ${barberName} ya está ocupado en ese horario. A continuación te mostramos horarios disponibles.`);
+            showAvailableSlots(startOfDay, busySlots, durationMinutes);
+            return false;
+        }
+
+        return true;
+    }
+
+    function showAvailableSlots(dateBase, busySlots, durationMinutes) {
+        const container = document.getElementById('availability-slots') || createAvailabilityContainer();
+        container.innerHTML = '<p style="width:100%; font-weight:bold; color:var(--accent-color)">Horarios Disponibles Sugeridos:</p>';
+        
+        // Generar slots cada 30 min desde las 8am hasta las 11pm
+        const startHour = 8;
+        const endHour = 23;
+        
+        for (let h = startHour; h < endHour; h++) {
+            for (let m = 0; m < 60; m += 30) { // Intervalos de 30 min
+                const slotStart = new Date(dateBase);
+                slotStart.setHours(h, m, 0, 0);
+                const slotEnd = new Date(slotStart.getTime() + (durationMinutes * 60000));
+                
+                // Verificar colisión con busySlots
+                let isBusy = false;
+                for (let busy of busySlots) {
+                    if (slotStart.getTime() < busy.end && slotEnd.getTime() > busy.start) {
+                        isBusy = true;
+                        break;
+                    }
+                }
+
+                if (!isBusy) {
+                    const timeString = slotStart.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' });
+                    const tag = document.createElement('span');
+                    tag.className = 'slot-tag';
+                    tag.textContent = timeString;
+                    tag.onclick = () => {
+                        // Ajustar zona horaria para el input datetime-local
+                        const localIso = new Date(slotStart.getTime() - (slotStart.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+                        document.getElementById('appointment-date').value = localIso;
+                        container.innerHTML = ''; // Limpiar sugerencias al seleccionar
+                    };
+                    container.appendChild(tag);
+                }
+            }
+        }
+    }
+
+    function createAvailabilityContainer() {
+        const div = document.createElement('div');
+        div.id = 'availability-slots';
+        const parent = document.getElementById('appointment-date').parentNode;
+        parent.appendChild(div);
+        return div;
     }
 });

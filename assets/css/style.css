@@ -21,6 +21,7 @@ body {
     min-height: 100vh;
     scroll-behavior: smooth;
     padding-top: 80px; /* Espacio para el header fijo */
+    overflow-x: hidden; /* Evitar scroll horizontal por animaciones */
 }
 
 /* Typography */
@@ -301,7 +302,7 @@ footer { background-color: var(--secondary-color); color: #fff; padding: 50px 0 
     box-shadow: 0 0 0 2px var(--accent-color);
 }
 
-.service-option img { width: 100%; height: 100px; object-fit: cover; display: block; }
+.service-option img { width: 100%; height: 120px; object-fit: contain; background-color: #f8f8f8; display: block; }
 .service-option-info { padding: 15px 10px; }
 .service-option h4 { font-size: 1rem; margin: 0 0 5px 0; font-family: var(--font-body); }
 .service-option span { font-size: 0.9rem; color: var(--text-light); }
@@ -381,20 +382,25 @@ footer { background-color: var(--secondary-color); color: #fff; padding: 50px 0 
     .nav-menu {
         position: fixed;
         top: 0;
-        right: -100%;
-        width: 80%;
+        right: -100%; /* Oculto a la derecha */
+        width: 70%;
         height: 100vh;
         background-color: var(--secondary-color);
         flex-direction: column;
         justify-content: flex-start;
         padding-top: 80px;
-        transition: 0.4s ease;
+        transition: right 0.4s cubic-bezier(0.77, 0.2, 0.05, 1.0); /* Animación suave */
         box-shadow: -5px 0 15px rgba(0,0,0,0.5);
         box-sizing: border-box;
         overflow-y: auto;
     }
     .nav-menu.active { right: 0; }
     .nav-link { font-size: 1.2rem; margin: 10px 0; }
+
+    /* Animación del botón hamburguesa a X */
+    .nav-toggle.active .bar:nth-child(1) { transform: rotate(45deg) translate(5px, 6px); }
+    .nav-toggle.active .bar:nth-child(2) { opacity: 0; }
+    .nav-toggle.active .bar:nth-child(3) { transform: rotate(-45deg) translate(5px, -6px); }
     
     .about-grid { grid-template-columns: 1fr; }
     .hero h2 { font-size: 2rem; }
@@ -539,4 +545,100 @@ footer { background-color: var(--secondary-color); color: #fff; padding: 50px 0 
     .app-card-header { margin-bottom: 2px; justify-content: flex-start; gap: 10px; }
     .app-status { margin-left: auto; } /* Mueve el estado a la derecha */
     .app-barber { display: none; } /* Ocultar barbero en vista compacta móvil si se desea ahorrar espacio */
+}
+
+/* --- MODAL --- */
+.modal {
+    position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%;
+    background-color: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center;
+}
+.modal-content {
+    background-color: #fff; padding: 30px; border-radius: 8px; width: 90%; max-width: 400px;
+    position: relative; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+.close-modal {
+    position: absolute; top: 10px; right: 15px; font-size: 28px; font-weight: bold; cursor: pointer; color: #aaa;
+}
+.close-modal:hover { color: #000; }
+
+/* Botones de acción en tarjeta admin */
+.app-actions {
+    display: flex; gap: 8px; margin-top: 10px; border-top: 1px solid #eee; padding-top: 8px;
+}
+.btn-icon {
+    border: none; background: none; cursor: pointer; font-size: 1.1rem; padding: 5px;
+    border-radius: 4px; transition: background 0.2s;
+}
+.btn-icon.edit { color: #1976d2; }
+.btn-icon.edit:hover { background: #e3f2fd; }
+.btn-icon.delete { color: #d32f2f; }
+.btn-icon.delete:hover { background: #ffebee; }
+
+/* Disponibilidad en Booking */
+#availability-slots {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;
+}
+.slot-tag { background: #e0f2f1; color: #00695c; padding: 5px 10px; border-radius: 15px; font-size: 0.85rem; cursor: pointer; border: 1px solid #b2dfdb; }
+.slot-tag:hover { background: #b2dfdb; }
+
+/* --- PERFIL DE USUARIO EN HEADER --- */
+.user-profile-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 20px;
+    transition: background 0.3s;
+}
+.user-profile-container:hover { background: rgba(255,255,255,0.1); }
+
+.header-avatar {
+    width: 35px; height: 35px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-color);
+}
+.header-username { font-weight: 500; font-size: 0.9rem; color: #fff; }
+.header-chevron { color: #aaa; transition: transform 0.3s; }
+.user-profile-container.active .header-chevron { transform: rotate(180deg); }
+
+.user-dropdown {
+    position: absolute;
+    top: 120%;
+    right: 0;
+    background: #fff;
+    color: var(--text-main);
+    min-width: 180px;
+    border-radius: 8px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+    padding: 10px 0;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition: all 0.3s ease;
+    z-index: 1100;
+}
+.user-dropdown::before {
+    content: ''; position: absolute; top: -6px; right: 15px;
+    width: 12px; height: 12px; background: #fff; transform: rotate(45deg);
+}
+.user-profile-container.active .user-dropdown {
+    opacity: 1; visibility: visible; transform: translateY(0);
+}
+
+.dropdown-item {
+    display: block; padding: 10px 20px; color: var(--text-main); text-decoration: none; font-size: 0.9rem; transition: background 0.2s;
+    border: none; background: none; width: 100%; text-align: left; cursor: pointer;
+}
+.dropdown-item:hover { background: #f5f5f5; color: var(--accent-color); }
+.dropdown-divider { height: 1px; background: #eee; margin: 5px 0; }
+
+/* --- ANIMACIONES SCROLL (REVEAL) --- */
+.reveal {
+    opacity: 0;
+    transform: translateY(50px);
+    transition: all 0.8s ease-out;
+}
+.reveal.active {
+    opacity: 1;
+    transform: translateY(0);
 }

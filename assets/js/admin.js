@@ -84,6 +84,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(bulkConfirmBtn) bulkConfirmBtn.addEventListener('click', () => processBulkAction('confirmed'));
     if(bulkCancelBtn) bulkCancelBtn.addEventListener('click', () => processBulkAction('cancelled'));
 
+    // --- LÓGICA MODAL EDICIÓN ---
+    const modal = document.getElementById('edit-appointment-modal');
+    const closeModal = document.querySelector('.close-modal');
+    const editForm = document.getElementById('edit-appointment-form');
+
+    if(closeModal) {
+        closeModal.addEventListener('click', () => modal.classList.add('hidden'));
+    }
+    window.addEventListener('click', (e) => {
+        if (e.target == modal) modal.classList.add('hidden');
+    });
+
+    if(editForm) {
+        editForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('edit-app-id').value;
+            const newDate = document.getElementById('edit-app-date').value;
+            const newBarber = document.getElementById('edit-app-barber').value;
+
+            if(!id || !newDate || !newBarber) return;
+
+            try {
+                await updateDoc(doc(db, "appointments", id), {
+                    appointment_date: new Date(newDate).toISOString(),
+                    barber_name: newBarber
+                });
+                alert('Cita actualizada correctamente');
+                modal.classList.add('hidden');
+                loadDashboardData();
+            } catch (error) {
+                console.error("Error actualizando cita:", error);
+                alert("Error al actualizar.");
+            }
+        });
+    }
+
     let selectedAppointments = new Set();
 
     async function loadDashboardData() {
@@ -161,12 +197,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <div class="app-client">${app.user_name || 'Cliente'}</div>
                             <div class="app-service">${app.service_name} - ${formatCurrency(app.service_price)}</div>
                             <div class="app-barber"><i class='bx bx-user'></i> ${app.barber_name} ${app.image_url ? ` | <a href="${app.image_url}" target="_blank" style="color:var(--accent-color)">Ver Foto</a>` : ''}</div>
+                            <div class="app-actions">
+                                <button class="btn-icon edit" title="Editar" data-id="${app.id}" data-date="${app.appointment_date}" data-barber="${app.barber_name}"><i class='bx bx-edit'></i></button>
+                                <button class="btn-icon delete" title="Eliminar" data-id="${app.id}"><i class='bx bx-trash'></i></button>
+                            </div>
                         </div>
                     `;
 
                     // Lógica de selección
                     card.addEventListener('click', (e) => {
                         if (e.target.tagName === 'A') return; // Permitir clic en enlaces
+                        if (e.target.closest('.btn-icon')) return; // Ignorar clic si es en botones de acción
                         const checkbox = card.querySelector('.app-checkbox');
                         // Si no se hizo clic directamente en el checkbox, invertirlo
                         if (e.target !== checkbox) {
@@ -183,6 +224,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                         updateBulkUI();
                     });
 
+                    // Eventos botones editar/eliminar
+                    const editBtn = card.querySelector('.edit');
+                    const deleteBtn = card.querySelector('.delete');
+
+                    editBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        openEditModal(editBtn.dataset.id, editBtn.dataset.date, editBtn.dataset.barber);
+                    });
+
+                    deleteBtn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        if(confirm('¿Estás seguro de eliminar esta cita permanentemente?')) {
+                            await deleteDoc(doc(db, "appointments", deleteBtn.dataset.id));
+                            loadDashboardData();
+                        }
+                    });
+
                     grid.appendChild(card);
                 });
                 
@@ -196,6 +254,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (error) {
             console.error("Error loading dashboard:", error);
         }
+    }
+
+    function openEditModal(id, dateIso, barber) {
+        document.getElementById('edit-app-id').value = id;
+        // Convertir ISO a formato datetime-local (YYYY-MM-DDTHH:MM)
+        const dateObj = new Date(dateIso);
+        // Ajuste manual de zona horaria simple para el input
+        const localIso = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+        document.getElementById('edit-app-date').value = localIso;
+        document.getElementById('edit-app-barber').value = barber;
+        document.getElementById('edit-appointment-modal').classList.remove('hidden');
     }
 
     function updateBulkUI() {

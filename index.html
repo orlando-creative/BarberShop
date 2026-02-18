@@ -22,9 +22,17 @@
                 
                 <!-- Botón de Acceso Unificado -->
                 <button id="login-btn" class="btn-primary">Acceder</button>
-                <div id="user-info" class="hidden user-info-nav">
-                    <span id="user-name"></span>
-                    <button id="logout-btn" class="btn-outline btn-sm">Salir</button>
+                
+                <!-- Nuevo Perfil de Usuario Dropdown -->
+                <div id="user-info" class="hidden user-profile-container">
+                    <img id="header-avatar" src="https://via.placeholder.com/40" alt="User" class="header-avatar">
+                    <span id="user-name" class="header-username">Usuario</span>
+                    <i class='bx bx-chevron-down header-chevron'></i>
+                    <div class="user-dropdown">
+                        <a href="#history-section" class="dropdown-item"><i class='bx bx-history'></i> Mis Citas</a>
+                        <div class="dropdown-divider"></div>
+                        <button id="logout-btn" class="dropdown-item"><i class='bx bx-log-out'></i> Cerrar Sesión</button>
+                    </div>
                 </div>
             </nav>
 
@@ -48,7 +56,7 @@
 
     <main class="container">
         <!-- Servicios Preview (Siempre visible) -->
-        <section id="services-info" class="section">
+        <section id="services-info" class="section reveal">
             <h2 class="section-title">Nuestros Servicios</h2>
             <div class="services-grid">
                 <div class="service-item card">
@@ -67,7 +75,7 @@
         </section>
 
         <!-- Galería -->
-        <section id="gallery" class="section">
+        <section id="gallery" class="section reveal">
             <h2 class="section-title">Nuestros Trabajos</h2>
             <div class="gallery-grid">
                 <div class="gallery-item"><img src="https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=600&q=80" alt="Corte 1"></div>
@@ -78,7 +86,7 @@
         </section>
 
         <!-- Contador de Próxima Cita (Solo visible si logueado y con cita) -->
-        <section id="countdown-section" class="section hidden">
+        <section id="countdown-section" class="section hidden reveal">
             <div class="card" style="text-align: center; background: var(--secondary-color); color: #fff;">
                 <h3 style="color: #fff;">Tu Próxima Cita es en:</h3>
                 <div id="countdown-timer" style="font-size: 2.5rem; font-family: var(--font-heading); color: var(--accent-color); margin: 20px 0;">
@@ -92,7 +100,7 @@
         </section>
 
         <!-- Sección de Reserva (Solo visible si logueado) -->
-        <section id="booking-section" class="section hidden">
+        <section id="booking-section" class="section hidden reveal">
             <div class="card">
                 <h2 style="text-align:center">Reservar Cita</h2>
                 <form id="booking-form">
@@ -106,9 +114,9 @@
                     <div class="form-group">
                         <label>Barbero</label>
                         <select id="barber-select" required>
-                            <option value="Carlos">Carlos (Master Barber)</option>
-                            <option value="Andres">Andrés (Fade Specialist)</option>
-                            <option value="Lucia">Lucía (Stylist)</option>
+                            <option value="Carlos">Carlos Herrera</option>
+                            <option value="Andres">Andrés Garcia</option>
+                            <option value="Lucia">Lucia Salvatierra</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -128,13 +136,13 @@
         </section>
 
         <!-- Historial (Solo visible si logueado) -->
-        <section id="history-section" class="section hidden">
+        <section id="history-section" class="section hidden reveal">
             <h2 class="section-title">Mis Citas</h2>
             <div id="appointments-list"></div>
         </section>
 
         <!-- Nosotros -->
-        <section id="about" class="section">
+        <section id="about" class="section reveal">
             <div class="about-grid">
                 <div class="about-img">
                     <img src="https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=800&q=80" alt="Barbería Interior">
@@ -150,7 +158,7 @@
     </main>
 
     <!-- Contacto -->
-    <section id="contact" class="section contact-section">
+    <section id="contact" class="section contact-section reveal">
         <div class="container contact-container">
             <h2 class="section-title">Contáctanos</h2>
             <p>¿Tienes dudas o prefieres agendar por chat? Estamos disponibles para ti.</p>
